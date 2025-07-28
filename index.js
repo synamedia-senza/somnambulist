@@ -6,11 +6,11 @@ window.addEventListener("load", async () => {
   try {
     await senza.init();
 
-		senza.lifecycle.addEventListener("userinactivity", (event) => {
-		  const timeout = event.detail?.timeout ?? 60;
-			console.log(`Got 'userinactivity' event with timeout of ${timeout} seconds.`);
-		  showMessage(timeout);
-		});
+    senza.lifecycle.addEventListener("userinactivity", (event) => {
+      const timeout = event.detail?.timeout ?? 30;
+      console.log(`Got 'userinactivity' event with timeout of ${timeout} seconds.`);
+      showMessage(timeout);
+    });
 
     player = new senza.ShakaPlayer();
     player.configure(playerConfig());
@@ -18,7 +18,7 @@ window.addEventListener("load", async () => {
     await player.load(url);
     await video.play();
 
-	  senza.uiReady();
+    senza.uiReady();
   } catch (error) {
     console.error(error);
   }
@@ -40,6 +40,43 @@ document.addEventListener("keydown", async function (event) {
   }
   event.preventDefault();
 });
+
+let countdownInterval = null;
+async function showMessage(seconds) {
+  if (senza.lifecycle.state == senza.lifecycle.UiState.BACKGROUND) {
+    await senza.lifecycle.moveToForeground();
+  }
+  
+  let remaining = seconds;
+  updateMessageText(remaining);
+  overlay.style.display = "flex";
+
+  countdownInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      hideMessage();
+    } else {
+      updateMessageText(remaining);
+    }
+  }, 1000);
+}
+
+function updateMessageText(remaining) {
+  message.innerHTML = `<b>Are you still there?</b><br><br>Press any button in<br>the next ${remaining} seconds<br>to keep watching.`;
+}
+
+function hideMessage() {
+  overlay.style.display = "none";
+  clearInterval(countdownInterval);
+}
+
+function fakeUserInactivity(delay = 5, timeout = 30) {
+  console.log(`Will send fake 'userinactivity' event in ${delay} seconds.`);
+  setTimeout(() => {
+    console.log("Sending fake 'userinactivity' event.");
+    senza.lifecycle.dispatchEvent(new CustomEvent("userinactivity", {detail: {timeout}}));
+  }, delay * 1000);
+}
 
 async function toggleBackground() {
   if (senza.lifecycle.state == senza.lifecycle.UiState.BACKGROUND) {
@@ -63,41 +100,4 @@ function skip(seconds) {
 
 function playerConfig() {
   return {abr: {restrictions: {maxHeight: 1080}}};
-}
-
-let countdownInterval = null;
-async function showMessage(seconds) {
-  if (senza.lifecycle.state == senza.lifecycle.UiState.BACKGROUND) {
-    await senza.lifecycle.moveToForeground();
-  }
-	
-	let remaining = seconds;
-  updateMessageText(remaining);
-  overlay.style.display = "flex";
-
-  countdownInterval = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      hideMessage();
-    } else {
-      updateMessageText(remaining);
-    }
-  }, 1000);
-}
-
-function updateMessageText(remaining) {
-	message.innerHTML = `<b>Are you still there?</b><br><br>Press any button in<br>the next ${remaining} seconds<br>to keep watching.`;
-}
-
-function hideMessage() {
-  overlay.style.display = "none";
-  clearInterval(countdownInterval);
-}
-
-function fakeUserInactivity(delay = 5, timeout = 30) {
-	console.log(`Will send fake 'userinactivity' event in ${delay} seconds.`);
-  setTimeout(() => {
-		console.log("Sending fake 'userinactivity' event.");
-    senza.lifecycle.dispatchEvent(new CustomEvent("userinactivity", {detail: {timeout}}));
-  }, delay * 1000);
 }
